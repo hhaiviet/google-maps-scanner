@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps Scanner Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 400px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .status {
+            background: #f0f4ff;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .status-text {
+            font-size: 13px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-export {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-export:hover {
+            background: #138496;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .settings {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .settings h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        .setting-item {
+            margin-bottom: 12px;
+        }
+
+        .setting-item label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .setting-item input,
+        .setting-item select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .export-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .footer {
+            text-align: center;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            font-size: 11px;
+            color: #999;
+        }
+
+        .scanning {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .log {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ Maps Scanner Pro</h1>
+            <p>Công cụ scan Google Maps chuyên nghiệp</p>
+        </div>
+
+        <div class="status">
+            <div class="status-text" id="status">⏸️ Sẵn sàng để scan</div>
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-value" id="scannedCount">0</div>
+                <div class="stat-label">Đã Scan</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="totalSaved">0</div>
+                <div class="stat-label">Đã Lưu</div>
+            </div>
+        </div>
+
+        <div class="settings">
+            <h3>⚙️ Cài Đặt Scan</h3>
+            <div class="setting-item">
+                <label>Số lượng tối đa:</label>
+                <input type="number" id="maxResults" value="50" min="10" max="500">
+            </div>
+            <div class="setting-item">
+                <label>Tốc độ scroll (ms):</label>
+                <input type="number" id="scrollDelay" value="2000" min="500" max="5000" step="500">
+            </div>
+            <div class="setting-item">
+                <label>Lấy chi tiết:</label>
+                <select id="detailLevel">
+                    <option value="basic">Cơ bản (nhanh)</option>
+                    <option value="full" selected>Đầy đủ (chậm hơn)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-primary" id="startScan">
+                🚀 Bắt Đầu Scan
+            </button>
+            <button class="btn-danger" id="stopScan" disabled>
+                ⏹️ Dừng Scan
+            </button>
+            <div class="export-options">
+                <button class="btn-export" id="exportCSV">
+                    📊 Export CSV
+                </button>
+                <button class="btn-export" id="exportJSON">
+                    📦 Export JSON
+                </button>
+            </div>
+            <button class="btn-secondary" id="clearData">
+                🗑️ Xóa Dữ Liệu
+            </button>
+        </div>
+
+        <div class="log" id="logContainer"></div>
+
+        <div class="footer">
+            Made with ❤️ for Vietnamese developers | v1.0.0
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

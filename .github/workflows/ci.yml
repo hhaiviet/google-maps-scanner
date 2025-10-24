@@ -1,0 +1,152 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  lint-and-validate:
+    runs-on: ubuntu-latest
+    name: Lint and Validate
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Validate manifest.json
+      run: |
+        node -e "
+          const manifest = require('./manifest.json');
+          console.log('✅ Manifest is valid JSON');
+          console.log('Extension name:', manifest.name);
+          console.log('Version:', manifest.version);
+        "
+
+    - name: Check file structure
+      run: |
+        echo "🔍 Checking required files..."
+        test -f manifest.json && echo "✅ manifest.json exists"
+        test -f popup.html && echo "✅ popup.html exists"
+        test -f popup.js && echo "✅ popup.js exists"
+        test -f content.js && echo "✅ content.js exists"
+        test -f background.js && echo "✅ background.js exists"
+        test -d icons && echo "✅ icons directory exists"
+
+    - name: Lint JavaScript files
+      run: |
+        echo "🔍 Basic JavaScript syntax check..."
+        for file in *.js; do
+          if [ -f "$file" ]; then
+            node -c "$file" && echo "✅ $file syntax OK"
+          fi
+        done
+
+  build-extension:
+    runs-on: ubuntu-latest
+    name: Build Extension
+    needs: lint-and-validate
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Create extension package
+      run: |
+        echo "📦 Creating extension package..."
+        mkdir -p dist
+        
+        # Copy all necessary files
+        cp manifest.json dist/
+        cp *.html dist/
+        cp *.js dist/
+        cp -r icons dist/ 2>/dev/null || echo "No icons directory"
+        
+        # Create zip file
+        cd dist
+        zip -r ../google-maps-scanner-extension.zip .
+        cd ..
+        
+        echo "✅ Extension package created: google-maps-scanner-extension.zip"
+        ls -la google-maps-scanner-extension.zip
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: extension-package
+        path: google-maps-scanner-extension.zip
+
+  security-check:
+    runs-on: ubuntu-latest
+    name: Security Check
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check for sensitive data
+      run: |
+        echo "🔒 Checking for sensitive data..."
+        
+        # Check for API keys or secrets
+        if grep -r -i "api[_-]key\|secret\|password\|token" --include="*.js" --include="*.json" --include="*.html" .; then
+          echo "⚠️  Potential sensitive data found!"
+          exit 1
+        else
+          echo "✅ No sensitive data detected"
+        fi
+
+    - name: Validate permissions
+      run: |
+        echo "🔍 Checking manifest permissions..."
+        node -e "
+          const manifest = require('./manifest.json');
+          const permissions = manifest.permissions || [];
+          const hostPermissions = manifest.host_permissions || [];
+          
+          console.log('Permissions:', permissions);
+          console.log('Host permissions:', hostPermissions);
+          
+          // Check for overly broad permissions
+          const dangerousPerms = ['tabs', 'history', 'bookmarks'];
+          const hasDangerous = permissions.some(p => dangerousPerms.includes(p));
+          
+          if (hasDangerous) {
+            console.log('⚠️  Extension uses potentially sensitive permissions');
+          } else {
+            console.log('✅ Permissions look reasonable');
+          }
+        "
+
+  release:
+    runs-on: ubuntu-latest
+    name: Create Release
+    needs: [lint-and-validate, build-extension, security-check]
+    if: github.event_name == 'release'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: extension-package
+
+    - name: Upload to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./google-maps-scanner-extension.zip
+        asset_name: google-maps-scanner-extension-${{ github.event.release.tag_name }}.zip
+        asset_content_type: application/zip
