@@ -140,6 +140,8 @@ function extractBasicData(element) {
             phone: '',
             website: '',
             hours: '',
+            foundedYear: null,
+            foundedText: '',
             latitude: null,
             longitude: null,
             timestamp: new Date().toISOString()
@@ -371,6 +373,12 @@ async function collectDetailedInfo() {
                 if (detailedData.hours && !allPlacesData[i].hours) {
                     allPlacesData[i].hours = detailedData.hours;
                     console.log(`   🕐 Hours: ${detailedData.hours.substring(0, 30)}...`);
+                }
+
+                if (detailedData.foundedYear && !allPlacesData[i].foundedYear) {
+                    allPlacesData[i].foundedYear = detailedData.foundedYear;
+                    allPlacesData[i].foundedText = detailedData.foundedText;
+                    console.log(`   🏗️ Founded: ${detailedData.foundedYear}`);
                 }
                 
                 // Address chỉ update nếu detailed address dài hơn (chi tiết hơn)
@@ -636,6 +644,149 @@ async function extractDetailedData() {
         const plusCodeElement = document.querySelector('[data-item-id*="oloc"]');
         if (plusCodeElement) {
             data.plusCode = plusCodeElement.textContent.trim();
+        }
+
+        // Business creation date / Founded date
+        const businessDateSelectors = [
+            // Look for "Founded" or "Established" information
+            { 
+                selector: '[data-item-id*="founded"], [data-item-id*="established"]',
+                extract: (el) => el.textContent || el.getAttribute('aria-label')
+            },
+            // Vietnamese patterns
+            { 
+                selector: '*',
+                extract: (el) => {
+                    const text = el.textContent;
+                    if (text && (text.includes('Thành lập') || text.includes('Khởi nghiệp') || text.includes('Ngày thành lập'))) {
+                        return text;
+                    }
+                    return null;
+                }
+            },
+            // English patterns
+            { 
+                selector: '*',
+                extract: (el) => {
+                    const text = el.textContent;
+                    if (text && (text.includes('Founded') || text.includes('Established') || text.includes('Since') || text.includes('Started'))) {
+                        return text;
+                    }
+                    return null;
+                }
+            },
+            // Look in About section
+            {
+                selector: '[data-section-id="about"] *, .section-about *, .business-info *',
+                extract: (el) => {
+                    const text = el.textContent;
+                    // Look for year patterns (1900-2025)
+                    const yearMatch = text.match(/(19|20)\d{2}/);
+                    if (yearMatch && (text.toLowerCase().includes('found') || 
+                                     text.toLowerCase().includes('establish') ||
+                                     text.toLowerCase().includes('since') ||
+                                     text.toLowerCase().includes('thành lập') ||
+                                     text.toLowerCase().includes('khởi nghiệp'))) {
+                        return text;
+                    }
+                    return null;
+                }
+            },
+            // Business hours section might contain founding info
+            {
+                selector: '[aria-label*="business hours"], [aria-label*="giờ làm việc"]',
+                extract: (el) => {
+                    const text = el.textContent || el.getAttribute('aria-label');
+                    if (text && ((text.includes('Since') || text.includes('Từ năm') || text.includes('Founded')))) {
+                        return text;
+                    }
+                    return null;
+                }
+            }
+        ];
+
+        for (const {selector, extract} of businessDateSelectors) {
+            try {
+                const elements = document.querySelectorAll(selector);
+                
+                for (const element of elements) {
+                    try {
+                        const text = extract(element);
+                        if (text) {
+                            // Extract year from text
+                            const yearPatterns = [
+                                /(?:Founded|Established|Since|Thành lập|Khởi nghiệp|Từ năm)\s*:?\s*(19|20)\d{2}/i,
+                                /(19|20)\d{2}/g,  // Any 4-digit year
+                            ];
+
+                            for (const pattern of yearPatterns) {
+                                const match = text.match(pattern);
+                                if (match) {
+                                    let foundedYear = match[1] ? match[0] : match[0];
+                                    
+                                    // Validate year (1900-2025)
+                                    const year = parseInt(foundedYear.replace(/\D/g, ''));
+                                    if (year >= 1900 && year <= 2025) {
+                                        data.foundedYear = year;
+                                        data.foundedText = text.trim();
+                                        console.log(`🏗️ Found business founded: ${year} (${text.trim()})`);
+                                        break;
+                                    }
+                                }
+                            }
+                            if (data.foundedYear) break;
+                        }
+                    } catch (e) {
+                        // Skip this element
+                    }
+                }
+                if (data.foundedYear) break;
+            } catch (e) {
+                // Skip this selector
+            }
+        }
+
+        // Business registration date from Google Business Profile
+        // Look for "Business information" or "About this business" sections
+        if (!data.foundedYear) {
+            try {
+                // Scroll down to try loading more business info
+                const mainPanel = document.querySelector('[role="main"]');
+                if (mainPanel) {
+                    // Look for expandable sections that might contain business info
+                    const expandButtons = mainPanel.querySelectorAll('button[aria-expanded="false"]');
+                    
+                    for (const button of expandButtons) {
+                        const buttonText = button.textContent.toLowerCase();
+                        if (buttonText.includes('about') || buttonText.includes('business') || 
+                            buttonText.includes('thông tin') || buttonText.includes('giới thiệu')) {
+                            
+                            console.log(`🔍 Expanding section: ${button.textContent}`);
+                            button.click();
+                            await sleep(1000); // Wait for section to expand
+                            
+                            // Look for founding info in expanded section
+                            const expandedContent = button.closest('div').querySelector('[data-section-id], .expanded-content, .about-section');
+                            if (expandedContent) {
+                                const sectionText = expandedContent.textContent;
+                                const yearMatch = sectionText.match(/(?:Founded|Established|Since|Thành lập|Khởi nghiệp)\s*:?\s*(19|20)\d{2}/i);
+                                if (yearMatch) {
+                                    const year = parseInt(yearMatch[1] + yearMatch[0].slice(-2));
+                                    if (year >= 1900 && year <= 2025) {
+                                        data.foundedYear = year;
+                                        data.foundedText = yearMatch[0];
+                                        console.log(`🏗️ Found business founded in expanded section: ${year}`);
+                                        break;
+                                    }
+                                }
+                            }
+                            break; // Only expand one section to avoid too much delay
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('Error expanding business info sections:', e);
+            }
         }
 
         return data;

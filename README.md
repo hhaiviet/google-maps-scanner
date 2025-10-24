@@ -36,6 +36,8 @@ Extension thu thập các thông tin:
 - ✅ Số lượng reviews
 - ✅ Loại hình kinh doanh / Category
 - ✅ Giờ mở cửa
+- ✅ **Năm thành lập** (Founded Year) 🆕
+- ✅ **Thông tin thành lập** doanh nghiệp 🆕
 - ✅ Tọa độ GPS (Latitude/Longitude)
 - ✅ Place ID
 - ✅ URL Google Maps
@@ -47,7 +49,7 @@ Extension thu thập các thông tin:
 
 ### 🎯 2 Chế Độ Scan
 1. **Basic Mode** (Nhanh): Chỉ lấy thông tin từ danh sách
-2. **Full Mode** (Chi tiết): Click vào từng địa điểm để lấy thêm thông tin (phone, website, hours)
+2. **Full Mode** (Chi tiết): Click vào từng địa điểm để lấy thêm thông tin (phone, website, hours, founded year)
 
 ### 💪 Tính Năng Nâng Cao
 - Lưu trữ dữ liệu trong Chrome Storage
