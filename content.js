@@ -218,15 +218,40 @@ async function collectDetailedInfo() {
             const expectedPlaceId = allPlacesData[i].placeId;
             const expectedName = allPlacesData[i].name;
             
-            // TÌM element có chứa PlaceID này (không dùng index)
-            const placeElements = sidebar.querySelectorAll('a[href*="/maps/place/"]');
+            // TÌM element có chứa PlaceID này (với multiple attempts)
             let targetElement = null;
+            let findAttempts = 0;
+            const maxFindAttempts = 3;
             
-            for (const el of placeElements) {
-                const elPlaceId = extractPlaceId(el.href);
-                if (elPlaceId === expectedPlaceId) {
-                    targetElement = el;
-                    break;
+            while (!targetElement && findAttempts < maxFindAttempts) {
+                findAttempts++;
+                
+                // Refresh element list mỗi lần tìm
+                const placeElements = sidebar.querySelectorAll('a[href*="/maps/place/"]');
+                
+                for (const el of placeElements) {
+                    const elPlaceId = extractPlaceId(el.href);
+                    if (elPlaceId === expectedPlaceId) {
+                        // Double-check element is visible and clickable
+                        const rect = el.getBoundingClientRect();
+                        if (rect.height > 0 && rect.width > 0) {
+                            targetElement = el;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!targetElement && findAttempts < maxFindAttempts) {
+                    console.log(`   🔄 Element not found, attempt ${findAttempts}/${maxFindAttempts}. Refreshing...`);
+                    await sleep(1000);
+                    
+                    // Try scrolling the sidebar a bit to refresh elements
+                    if (sidebar.scrollTop > 0) {
+                        sidebar.scrollTop -= 100;
+                        await sleep(300);
+                        sidebar.scrollTop += 100;
+                        await sleep(300);
+                    }
                 }
             }
             
@@ -238,15 +263,24 @@ async function collectDetailedInfo() {
             }
 
             console.log(`\n📱 [${i + 1}/${totalPlaces}] Clicking: ${expectedName}`);
-            console.log(`   PlaceID: ${expectedPlaceId}`);
+            console.log(`   Expected PlaceID: ${expectedPlaceId}`);
+            console.log(`   Element href: ${targetElement.href}`);
+            console.log(`   Element PlaceID: ${extractPlaceId(targetElement.href)}`);
 
             // Scroll element vào view trước khi click
             targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            await sleep(300); // Reduced
+            await sleep(800); // Increased for stability
+
+            // Double-check element still valid before clicking
+            const preClickPlaceId = extractPlaceId(targetElement.href);
+            if (preClickPlaceId !== expectedPlaceId) {
+                console.warn(`⚠️ Element changed before click! Expected ${expectedPlaceId}, found ${preClickPlaceId}`);
+                continue;
+            }
 
             // Click vào element
             targetElement.click();
-            await sleep(2000); // Reduced from 5000ms
+            await sleep(3500); // Increased wait time
 
             // VERIFY sau khi click - check URL hiện tại
             const currentUrl = window.location.href;
@@ -254,15 +288,44 @@ async function collectDetailedInfo() {
             
             if (currentPlaceId !== expectedPlaceId) {
                 console.error(`❌ Wrong place opened! Expected ${expectedPlaceId}, got ${currentPlaceId}`);
-                console.error(`   Skipping this place to avoid data corruption.`);
                 
-                // Go back
+                // RETRY LOGIC: Try to click correct place one more time
+                let retrySuccess = false;
+                
+                // Go back first
                 const backButton = document.querySelector('button[aria-label*="Back"], button[aria-label*="Quay"]');
                 if (backButton) {
                     backButton.click();
-                    await sleep(800);
+                    await sleep(1200); // Wait for navigation
+                    
+                    // Try to find and click the correct element again
+                    const retryPlaceElements = sidebar.querySelectorAll('a[href*="/maps/place/"]');
+                    for (const retryEl of retryPlaceElements) {
+                        const retryPlaceId = extractPlaceId(retryEl.href);
+                        if (retryPlaceId === expectedPlaceId) {
+                            console.log(`   🔄 Retrying click for correct place...`);
+                            retryEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            await sleep(500);
+                            retryEl.click();
+                            await sleep(2500);
+                            
+                            // Check if retry succeeded
+                            const retryCurrentUrl = window.location.href;
+                            const retryCurrentPlaceId = extractPlaceId(retryCurrentUrl);
+                            
+                            if (retryCurrentPlaceId === expectedPlaceId) {
+                                console.log(`   ✅ Retry successful!`);
+                                retrySuccess = true;
+                            }
+                            break;
+                        }
+                    }
                 }
-                continue;
+                
+                if (!retrySuccess) {
+                    console.error(`   ⚠️ Retry failed. Skipping this place to avoid data corruption.`);
+                    continue;
+                }
             }
 
             // Extract detailed info với retry
@@ -595,20 +658,32 @@ function extractPlaceId(url) {
         
         // Format 1: /maps/place/NAME/data=...!1s0x...!8m2!3d...
         // PlaceID format: 0x[hex]:0x[hex]
-        const match = url.match(/!1s(0x[a-f0-9]+:0x[a-f0-9]+)/i);
-        if (match && match[1]) {
-            return match[1];
+        const match1 = url.match(/!1s(0x[a-f0-9]+:0x[a-f0-9]+)/i);
+        if (match1 && match1[1]) {
+            return match1[1];
         }
 
-        // Format 2: Direct in URL path
-        // Only if it matches PlaceID pattern
-        const match2 = url.match(/place\/([^\/\?#]+)/);
+        // Format 2: Alternative data parameter format
+        const match2 = url.match(/data=[^!]*!4m\d+!\w+!(0x[a-f0-9]+:0x[a-f0-9]+)/i);
         if (match2 && match2[1]) {
-            const candidate = match2[1];
+            return match2[1];
+        }
+
+        // Format 3: Direct in URL path
+        // Only if it matches PlaceID pattern
+        const match3 = url.match(/place\/([^\/\?#]+)/);
+        if (match3 && match3[1]) {
+            const candidate = decodeURIComponent(match3[1]);
             // Verify it's a real PlaceID (0x...:0x... format)
             if (/^0x[a-f0-9]+:0x[a-f0-9]+$/i.test(candidate)) {
                 return candidate;
             }
+        }
+
+        // Format 4: Look for any 0x pattern in URL
+        const match4 = url.match(/(0x[a-f0-9]+:0x[a-f0-9]+)/i);
+        if (match4 && match4[1]) {
+            return match4[1];
         }
 
         return null;
