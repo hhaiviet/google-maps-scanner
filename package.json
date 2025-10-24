@@ -21,10 +21,14 @@
     "url": "https://github.com/yourusername/google-maps-scanner/issues"
   },
   "scripts": {
+    "build": "chmod +x build.sh && ./build.sh",
+    "build:win": "build.bat",
     "create-icons": "python3 create_icons.py",
     "test": "python3 test_extension.py",
-    "validate": "python3 -m json.tool manifest.json",
-    "zip": "zip -r google-maps-scanner.zip . -x '*.git*' -x 'node_modules/*' -x '*.DS_Store'"
+    "validate": "node -e \"const manifest = require('./manifest.json'); console.log('Valid manifest:', manifest.name, 'v' + manifest.version)\"",
+    "clean": "rm -rf build dist",
+    "clean:win": "rmdir /s /q build dist",
+    "zip": "zip -r google-maps-scanner.zip . -x '*.git*' -x 'node_modules/*' -x '*.DS_Store' -x 'build/*' -x 'dist/*'"
   },
   "devDependencies": {},
   "requirements": {
