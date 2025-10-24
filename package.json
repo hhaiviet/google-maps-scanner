@@ -14,11 +14,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/google-maps-scanner"
+    "url": "https://github.com/hhaiviet/google-maps-scanner"
   },
-  "homepage": "https://github.com/yourusername/google-maps-scanner#readme",
+  "homepage": "https://github.com/hhaiviet/google-maps-scanner#readme",
   "bugs": {
-    "url": "https://github.com/yourusername/google-maps-scanner/issues"
+    "url": "https://github.com/hhaiviet/google-maps-scanner/issues"
   },
   "scripts": {
     "build": "chmod +x build.sh && ./build.sh",

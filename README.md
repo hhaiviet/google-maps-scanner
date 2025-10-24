@@ -1,6 +1,6 @@
 # 🗺️ Google Maps Scanner Pro
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/yourusername/google-maps-scanner)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/hhaiviet/google-maps-scanner)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Available-brightgreen.svg)](#)
 

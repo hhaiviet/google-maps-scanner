@@ -32,7 +32,7 @@ git checkout -b feature/your-feature-name
 ### Local Development
 1. Clone repository:
 ```bash
-git clone https://github.com/yourusername/google-maps-scanner.git
+git clone https://github.com/hhaiviet/google-maps-scanner.git
 cd google-maps-scanner
 ```
 
@@ -93,8 +93,8 @@ Khi báo cáo bug, vui lòng include:
 
 ## 📞 Contact
 
-- GitHub Issues: Để báo bug, request feature
-- Email: your-email@example.com
-- Discussions: Để thảo luận chung
+- GitHub Issues: https://github.com/hhaiviet/google-maps-scanner/issues
+- Discussions: https://github.com/hhaiviet/google-maps-scanner/discussions
+- Project Repository: https://github.com/hhaiviet/google-maps-scanner
 
 Cảm ơn bạn đã contribute! 🙏
