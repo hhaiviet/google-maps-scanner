@@ -36,8 +36,6 @@ Extension thu thập các thông tin:
 - ✅ Số lượng reviews
 - ✅ Loại hình kinh doanh / Category
 - ✅ Giờ mở cửa
-- ✅ **Năm thành lập** (Founded Year) 🆕
-- ✅ **Thông tin thành lập** doanh nghiệp 🆕
 - ✅ Tọa độ GPS (Latitude/Longitude)
 - ✅ Place ID
 - ✅ URL Google Maps
